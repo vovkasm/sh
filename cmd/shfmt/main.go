@@ -8,9 +8,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/pprof"
 
 	"github.com/mvdan/sh/fileutil"
 	"github.com/mvdan/sh/syntax"
@@ -23,6 +25,9 @@ var (
 	binNext     = flag.Bool("bn", false, "binary ops like && and | may start a line")
 	posix       = flag.Bool("p", false, "parse POSIX shell code instead of bash")
 	showVersion = flag.Bool("version", false, "show version and exit")
+
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	memprofile = flag.String("memprofile", "", "write heap profile to file")
 
 	parseMode         syntax.ParseMode
 	printConfig       syntax.PrintConfig
@@ -37,6 +42,23 @@ var (
 
 func main() {
 	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer func() {
+			pprof.WriteHeapProfile(f)
+		}()
+	}
 
 	if *showVersion {
 		fmt.Println(version)
